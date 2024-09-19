@@ -1,6 +1,16 @@
-﻿class Program
+﻿// <copyright file="Program.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+/// <summary>
+/// The main class of the application, which benchmarks matrix multiplication methods.
+/// </summary>
+internal class Program
 {
-    static void Main(string[] args)
+    /// <summary>
+    /// Main entry point of the program, which tests matrix multiplication and benchmarks the performance of sequential and parallel multiplication.
+    /// </summary>
+    private static void Main(string[] args)
     {
         int[] testCasesRowsA = { 100, 500, 1000, 1500 };
         int[] testCasesColsA = { 100, 500, 1000, 1500 };
@@ -47,7 +57,7 @@
         }
     }
 
-    static string Format(string text, int width)
+    private static string Format(string text, int width)
     {
         return text.PadRight(width);
     }

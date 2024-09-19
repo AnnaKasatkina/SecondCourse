@@ -1,7 +1,20 @@
-﻿using System.Diagnostics;
+﻿// <copyright file="MatrixMultiplier.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
 
+using System.Diagnostics;
+
+/// <summary>
+/// Provides methods for multiplying matrices both sequentially and in parallel.
+/// </summary>
 public static class MatrixMultiplier
 {
+    /// <summary>
+    /// Multiplies two matrices sequentially.
+    /// </summary>
+    /// <param name="matrixA">The first matrix.</param>
+    /// <param name="matrixB">The second matrix.</param>
+    /// <returns>A new matrix resulting from the multiplication of matrixA and matrixB.</returns>
     public static int[,] SequentialMultiplyMatrix(int[,] matrixA, int[,] matrixB)
     {
         ValidateMatricesForMultiplication(matrixA, matrixB);
@@ -20,6 +33,7 @@ public static class MatrixMultiplier
                 {
                     sum += matrixA[i, k] * matrixB[k, j];
                 }
+
                 result[i, j] = sum;
             }
         }
@@ -27,6 +41,12 @@ public static class MatrixMultiplier
         return result;
     }
 
+    /// <summary>
+    /// Multiplies two matrices in parallel using multiple threads.
+    /// </summary>
+    /// <param name="matrixA">The first matrix.</param>
+    /// <param name="matrixB">The second matrix.</param>
+    /// <returns>A new matrix resulting from the parallel multiplication of matrixA and matrixB.</returns>
     public static int[,] ParallelMultiplyMatrix(int[,] matrixA, int[,] matrixB)
     {
         ValidateMatricesForMultiplication(matrixA, matrixB);
@@ -57,6 +77,19 @@ public static class MatrixMultiplier
         return result;
     }
 
+    /// <summary>
+    /// Measures the execution time of a given matrix multiplication method.
+    /// </summary>
+    /// <param name="multiplicationMethod">The matrix multiplication method to measure.</param>
+    /// <returns>The elapsed time in milliseconds.</returns>
+    public static double MeasureExecutionTime(Action multiplicationMethod)
+    {
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        multiplicationMethod();
+        stopwatch.Stop();
+        return stopwatch.Elapsed.TotalMilliseconds;
+    }
+
     private static void MultiplyMatrixRows(int[,] matrixA, int[,] matrixB, int[,] result, int startRow, int endRow)
     {
         int colsA = matrixA.GetLength(1);
@@ -71,17 +104,10 @@ public static class MatrixMultiplier
                 {
                     sum += matrixA[i, k] * matrixB[k, j];
                 }
+
                 result[i, j] = sum;
             }
         }
-    }
-
-    public static double MeasureExecutionTime(Action multiplicationMethod)
-    {
-        Stopwatch stopwatch = Stopwatch.StartNew();
-        multiplicationMethod();
-        stopwatch.Stop();
-        return stopwatch.Elapsed.TotalMilliseconds;
     }
 
     private static void ValidateMatricesForMultiplication(int[,] matrixA, int[,] matrixB)
@@ -91,5 +117,4 @@ public static class MatrixMultiplier
             throw new ArgumentException("Число столбцов первой матрицы должно совпадать с числом строк второй матрицы.");
         }
     }
-
 }
