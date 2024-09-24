@@ -9,10 +9,10 @@
 /// <typeparam name="T">The type of the computed value.</typeparam>
 public class ThreadSafeLazy<T> : ILazy<T>
 {
+    private readonly object locks = new ();
     private Func<T>? supplier;
     private T? value = default;
     private bool isEvaluated = false;
-    private object locks = new object();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ThreadSafeLazy{T}"/> class.
