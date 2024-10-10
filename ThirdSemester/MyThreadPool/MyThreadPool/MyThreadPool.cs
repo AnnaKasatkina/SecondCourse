@@ -1,146 +1,79 @@
-﻿using System.Runtime.CompilerServices;
+﻿// <copyright file="MyThreadPool.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
 
-public class MyThreadPool : IDisposable
+using System.Collections.Concurrent;
+
+/// <summary>
+/// Represents a thread pool that manages a fixed number of worker threads.
+/// Allows submitting tasks that are executed by these threads.
+/// </summary>
+public class MyThreadPool
 {
-    private readonly int threadsCount;
-    private readonly List<Thread> threads;
-    private readonly Queue<Action> taskQueue;
-    private readonly object _lock = new object();
-    private bool isShutdownInitiated = false;
-    private bool completePendingTasks = true;
-    private readonly ManualResetEvent shurdownEvent = new ManualResetEvent(false);
-    private int activeThreads;
+    private readonly int numThreads;
+    private readonly Thread[] threads;
+    private readonly BlockingCollection<Action> taskQueue = new();
+    private readonly CancellationTokenSource cancellationTokenSource = new();
 
-    public MyThreadPool(int threadsCount)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MyThreadPool"/> class with a fixed number of threads.
+    /// </summary>
+    /// <param name="numThreads">The number of threads in the pool.</param>
+    public MyThreadPool(int numThreads)
     {
-        if (threadsCount <= 0)
-        {
-            throw new ArgumentException("Количество потоков должно быть положительным.", nameof(threadsCount));
-        }
+        this.numThreads = numThreads;
+        this.threads = new Thread[this.numThreads];
 
-        this.threadsCount = threadsCount;
-        threads = new List<Thread>(threadsCount);
-        taskQueue = new Queue<Action>();
-
-        for (int i = 0; i < threadsCount; i++)
+        for (int i = 0; i < this.numThreads; i++)
         {
-            Thread thread = new Thread(WorkerLoop)
-            {
-                IsBackground = true,
-                Name = $"My ThreadPool_Thread_{i}"
-            };
-            threads.Add(thread);
-            thread.Start();
+            this.threads[i] = new Thread(this.WorkerLoop);
+            this.threads[i].Start();
         }
     }
 
-    public IMyTask<TResult> Submit<TResult>(Func<TResult> func)
+    /// <summary>
+    /// Submits a task to the thread pool for execution.
+    /// </summary>
+    /// <typeparam name="TResult">The type of the result produced by the task.</typeparam>
+    /// <param name="taskFunc">The function representing the task.</param>
+    /// <returns>A task object representing the submitted task.</returns>
+    public IMyTask<TResult> Submit<TResult>(Func<TResult> taskFunc)
     {
-        if (func == null)
-        {
-            throw new ArgumentNullException(nameof(func));
-        }
-
-        lock (_lock)
-        {
-            if (isShutdownInitiated)
-            {
-                throw new InvalidOperationException("ThreadPool завершает работу и не принимает новые задачи.");
-            }
-
-            var myTask = new MyTask<TResult>(this, func);
-            EnqueueTask(() => myTask.Execute());
-            return myTask;
-        }
-    }
-    public void EnqueueTask(Action action)
-    {
-        lock (_lock)
-        {
-            if (isShutdownInitiated)
-            {
-                throw new InvalidOperationException("ThreadPool завершает работу и не принимает новые задачи.");
-            }
-
-            taskQueue.Enqueue(action);
-            Monitor.Pulse(_lock);
-        }
+        var myTask = new MyTask<TResult>(taskFunc);
+        this.taskQueue.Add(() => myTask.Execute());
+        return myTask;
     }
 
+    /// <summary>
+    /// Shuts down the thread pool, waiting for all tasks to complete.
+    /// No new tasks can be submitted after calling this method.
+    /// </summary>
+    public void Shutdown()
+    {
+        this.cancellationTokenSource.Cancel();
+        foreach (var thread in this.threads)
+        {
+            thread.Join();
+        }
+
+        this.taskQueue.CompleteAdding();
+    }
+
+    /// <summary>
+    /// The worker loop where threads retrieve and execute tasks from the task queue.
+    /// </summary>
     private void WorkerLoop()
     {
-        while (true)
+        while (!this.cancellationTokenSource.Token.IsCancellationRequested)
         {
-            Action? task = null;
-            lock (_lock)
+            try
             {
-                while(taskQueue.Count == 0 && !isShutdownInitiated)
-                {
-                    Monitor.Wait(_lock);
-                }
-
-                if (isShutdownInitiated && (taskQueue.Count == 0 || !completePendingTasks))
-                {
-                    break;
-                }
-
-                if (taskQueue.Count > 0)
-                {
-                    task = taskQueue.Dequeue();
-                }
+                Action task = this.taskQueue.Take(this.cancellationTokenSource.Token);
+                task();
             }
-
-            if (task != null)
+            catch (OperationCanceledException)
             {
-                Interlocked.Increment(ref activeThreads);
-
-                try
-                {
-                    task.Invoke();
-                }
-                finally
-                {
-                    Interlocked.Decrement(ref activeThreads);
-                }
-            }
-        }
-
-        if (Interlocked.Decrement(ref activeThreads) == 0 && taskQueue.Count == 0)
-        {
-            shurdownEvent.Set();
-        }
-    }
-
-    public void Dispose()
-    {
-        Shutdown();
-    }
-
-    public void Shutdown(bool newCompletePendingTasks = true)
-    {
-        lock (_lock)
-        {
-            if (isShutdownInitiated)
-            { return; }
-
-            isShutdownInitiated = true;
-            completePendingTasks = newCompletePendingTasks;
-
-            if (!newCompletePendingTasks)
-            {
-                taskQueue.Clear();
-            }
-
-            Monitor.PulseAll(_lock);
-        }
-
-        shurdownEvent.WaitOne();
-
-        foreach (var thread in threads)
-        {
-            if (thread.IsAlive)
-            {
-                thread.Join();
+                break;
             }
         }
     }

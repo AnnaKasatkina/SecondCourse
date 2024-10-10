@@ -1,115 +1,107 @@
-﻿public class MyTask<TResult>(MyThreadPool threadPool, Func<TResult> func) : IMyTask<TResult>
+﻿// <copyright file="MyTask.cs" company="PlaceholderCompany">
+// Copyright (c) PlaceholderCompany. All rights reserved.
+// </copyright>
+
+/// <summary>
+/// Represents a task that can be executed by the thread pool.
+/// </summary>
+/// <typeparam name="TResult">The type of the result produced by the task.</typeparam>
+public class MyTask<TResult> : IMyTask<TResult>
 {
-    private readonly MyThreadPool threadPool = threadPool ?? throw new ArgumentNullException(nameof(threadPool));
-    private readonly Func<TResult> func = func ?? throw new ArgumentNullException(nameof(func));
-    private readonly List<Action> continuations = new List<Action>();
-    private readonly object _lock = new object();
-    private bool isCompleted = false;
+    private Func<TResult> taskFunc;
     private TResult? result;
     private Exception? exception;
+    private bool isCompleted;
+    private ManualResetEvent completionEvent = new(false);
+    private List<Action> continuations = new();
 
-    public bool IsCompleted
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MyTask{TResult}"/> class.
+    /// </summary>
+    /// <param name="taskFunc">The function representing the task to be executed.</param>
+    public MyTask(Func<TResult> taskFunc)
     {
-        get
-        {
-            lock (_lock)
-            {
-                return isCompleted;
-            }
-        }
+        this.taskFunc = taskFunc;
     }
 
+    /// <summary>
+    /// Gets a value indicating whether the task is completed.
+    /// </summary>
+    public bool IsCompleted => this.isCompleted;
+
+    /// <summary>
+    /// Gets the result of the task.
+    /// If the task is not completed, this will block until the result is available.
+    /// </summary>
     public TResult Result
     {
         get
         {
-            lock (_lock)
+            this.completionEvent.WaitOne();
+            if (this.exception != null)
             {
-                while (!isCompleted)
-                {
-                    Monitor.Wait(_lock);
-                }
-
-                if (exception != null)
-                {
-                    throw new AggregateException(exception);
-                }
-
-                if (result == null)
-                {
-                    throw new InvalidOperationException("The result is null!");
-                }
-
-                return result;
+                throw new AggregateException(this.exception);
             }
+
+            if (this.result == null)
+            {
+                throw new InvalidOperationException("The result is null!");
+            }
+
+            return this.result;
         }
     }
 
-    public IMyTask<TNewResult> ContinueWith<TNewResult>(Func<TResult, TNewResult> continuation)
-    {
-        if (continuation == null)
-        {
-            throw new ArgumentNullException(nameof(continuation));
-        }
-
-        var newTask = new MyTask<TNewResult>(threadPool, () =>
-        {
-            TResult parentResult = this.Result;
-            return continuation(parentResult);
-        });
-
-        lock (_lock)
-        {
-            if (!isCompleted)
-            {
-                threadPool.EnqueueTask(() => newTask.Execute());
-            }
-            else
-            {
-                continuations.Add(() => threadPool.EnqueueTask(() => newTask.Execute()));
-            }
-        }
-
-        return newTask;
-    }
-
+    /// <summary>
+    /// Executes the task and stores the result.
+    /// </summary>
     public void Execute()
     {
         try
         {
-            TResult res = func();
-            List<Action> continuationsCopy;
-            lock (_lock)
-            {
-                result = res;
-                isCompleted = true;
-                continuationsCopy = new List<Action>(continuations);
-                continuations.Clear();
-                Monitor.PulseAll(_lock);
-            }
-
-            foreach (var cont in continuationsCopy)
-            {
-                cont.Invoke();
-            }
+            this.result = this.taskFunc();
         }
-
         catch (Exception ex)
         {
-            List<Action> continuationsCopy;
-            lock (_lock)
+            this.exception = ex;
+        }
+        finally
+        {
+            this.isCompleted = true;
+            this.completionEvent.Set();
+            lock (this.continuations)
             {
-                exception = ex;
-                isCompleted = true;
-                continuationsCopy = new List<Action>(continuations);
-                continuations.Clear();
-                Monitor.PulseAll(_lock);
-            }
-
-            foreach (var cont in continuationsCopy)
-            {
-                cont.Invoke();
+                foreach (var continuation in this.continuations)
+                {
+                    continuation();
+                }
             }
         }
+    }
+
+    /// <summary>
+    /// Schedules a continuation task that will run after this task is completed.
+    /// </summary>
+    /// <typeparam name="TNewResult">The type of the result produced by the continuation task.</typeparam>
+    /// <param name="continuation">The function to apply to the result of the current task.</param>
+    /// <returns>A new task representing the continuation.</returns>
+    public IMyTask<TNewResult> ContinueWith<TNewResult>(Func<TResult, TNewResult> continuation)
+    {
+        var newTask = new MyTask<TNewResult>(() => continuation(this.Result));
+        Action runContinuation = () => newTask.Execute();
+
+        lock (this.continuations)
+        {
+            if (this.isCompleted)
+            {
+                runContinuation();
+            }
+            else
+            {
+                this.continuations.Add(runContinuation);
+            }
+        }
+
+        return newTask;
     }
 }
