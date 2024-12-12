@@ -2,6 +2,8 @@
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
+namespace ParallelMatrixMultiplication;
+
 using System.Diagnostics;
 
 /// <summary>
@@ -19,17 +21,17 @@ public static class MatrixMultiplier
     {
         ValidateMatricesForMultiplication(matrixA, matrixB);
 
-        int rowsA = matrixA.GetLength(0);
-        int colsA = matrixA.GetLength(1);
-        int colsB = matrixB.GetLength(1);
-        int[,] result = new int[rowsA, colsB];
+        var rowsA = matrixA.GetLength(0);
+        var colsA = matrixA.GetLength(1);
+        var colsB = matrixB.GetLength(1);
+        var result = new int[rowsA, colsB];
 
-        for (int i = 0; i < rowsA; i++)
+        for (var i = 0; i < rowsA; i++)
         {
-            for (int j = 0; j < colsB; j++)
+            for (var j = 0; j < colsB; j++)
             {
-                int sum = 0;
-                for (int k = 0; k < colsA; k++)
+                var sum = 0;
+                for (var k = 0; k < colsA; k++)
                 {
                     sum += matrixA[i, k] * matrixB[k, j];
                 }
@@ -51,19 +53,19 @@ public static class MatrixMultiplier
     {
         ValidateMatricesForMultiplication(matrixA, matrixB);
 
-        int rowsA = matrixA.GetLength(0);
-        int colsA = matrixA.GetLength(1);
-        int colsB = matrixB.GetLength(1);
-        int[,] result = new int[rowsA, colsB];
+        var rowsA = matrixA.GetLength(0);
+        var colsA = matrixA.GetLength(1);
+        var colsB = matrixB.GetLength(1);
+        var result = new int[rowsA, colsB];
 
-        int threadCount = Environment.ProcessorCount;
-        int rowsPerThread = rowsA / threadCount;
+        var threadCount = Math.Min(rowsA, Environment.ProcessorCount);
+        var rowsPerThread = (int)Math.Ceiling((double)rowsA / threadCount);
         Thread[] threads = new Thread[threadCount];
 
-        for (int i = 0; i < threadCount; i++)
+        for (var i = 0; i < threadCount; i++)
         {
-            int startRow = i * rowsPerThread;
-            int endRow = (i == threadCount - 1) ? rowsA : startRow + rowsPerThread;
+            var startRow = i * rowsPerThread;
+            var endRow = Math.Min(rowsA, startRow + rowsPerThread);
 
             threads[i] = new Thread(() => MultiplyMatrixRows(matrixA, matrixB, result, startRow, endRow));
             threads[i].Start();
@@ -84,7 +86,7 @@ public static class MatrixMultiplier
     /// <returns>The elapsed time in milliseconds.</returns>
     public static double MeasureExecutionTime(Action multiplicationMethod)
     {
-        Stopwatch stopwatch = Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
         multiplicationMethod();
         stopwatch.Stop();
         return stopwatch.Elapsed.TotalMilliseconds;
@@ -92,15 +94,15 @@ public static class MatrixMultiplier
 
     private static void MultiplyMatrixRows(int[,] matrixA, int[,] matrixB, int[,] result, int startRow, int endRow)
     {
-        int colsA = matrixA.GetLength(1);
-        int colsB = matrixB.GetLength(1);
+        var colsA = matrixA.GetLength(1);
+        var colsB = matrixB.GetLength(1);
 
-        for (int i = startRow; i < endRow; i++)
+        for (var i = startRow; i < endRow; i++)
         {
-            for (int j = 0; j < colsB; j++)
+            for (var j = 0; j < colsB; j++)
             {
-                int sum = 0;
-                for (int k = 0; k < colsA; k++)
+                var sum = 0;
+                for (var k = 0; k < colsA; k++)
                 {
                     sum += matrixA[i, k] * matrixB[k, j];
                 }

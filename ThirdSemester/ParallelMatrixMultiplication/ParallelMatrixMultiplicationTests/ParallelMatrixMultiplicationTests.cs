@@ -30,7 +30,7 @@ public class ParallelMatrixMultiplicationTests
             { 10, 8 },
         };
 
-        var result = MatrixMultiplier.SequentialMultiplyMatrix(matrixA, matrixB);
+        var result = ParallelMatrixMultiplication.MatrixMultiplier.SequentialMultiplyMatrix(matrixA, matrixB);
 
         Assert.That(result, Is.EqualTo(expected));
     }
@@ -58,7 +58,7 @@ public class ParallelMatrixMultiplicationTests
             { 139, 154 },
         };
 
-        var result = MatrixMultiplier.SequentialMultiplyMatrix(matrixA, matrixB);
+        var result = ParallelMatrixMultiplication.MatrixMultiplier.SequentialMultiplyMatrix(matrixA, matrixB);
 
         Assert.That(result, Is.EqualTo(expected));
     }
@@ -85,7 +85,7 @@ public class ParallelMatrixMultiplicationTests
             { 7, 8 },
         };
 
-        var result = MatrixMultiplier.SequentialMultiplyMatrix(matrixA, matrixB);
+        var result = ParallelMatrixMultiplication.MatrixMultiplier.SequentialMultiplyMatrix(matrixA, matrixB);
 
         Assert.That(result, Is.EqualTo(expected));
     }
@@ -112,7 +112,7 @@ public class ParallelMatrixMultiplicationTests
             { 0, 0 },
         };
 
-        var result = MatrixMultiplier.SequentialMultiplyMatrix(matrixA, matrixB);
+        var result = ParallelMatrixMultiplication.MatrixMultiplier.SequentialMultiplyMatrix(matrixA, matrixB);
 
         Assert.That(result, Is.EqualTo(expected));
     }
@@ -130,6 +130,6 @@ public class ParallelMatrixMultiplicationTests
         };
         int[,] matrixB = { { 1, 2 } };
 
-        Assert.Throws<ArgumentException>(() => MatrixMultiplier.SequentialMultiplyMatrix(matrixA, matrixB));
+        Assert.Throws<ArgumentException>(() => ParallelMatrixMultiplication.MatrixMultiplier.SequentialMultiplyMatrix(matrixA, matrixB));
     }
 }
