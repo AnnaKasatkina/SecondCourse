@@ -2,6 +2,8 @@
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
+namespace MyThreadPool;
+
 using System.Collections.Concurrent;
 
 /// <summary>

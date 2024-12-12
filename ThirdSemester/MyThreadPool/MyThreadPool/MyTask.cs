@@ -2,6 +2,8 @@
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
+namespace MyThreadPool;
+
 /// <summary>
 /// Represents a task that can be executed by the thread pool.
 /// </summary>

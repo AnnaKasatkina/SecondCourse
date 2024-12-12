@@ -2,6 +2,8 @@
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
+namespace MyThreadPool;
+
 /// <summary>
 /// Represents an asynchronous task that can compute a result of type <typeparamref name="TResult"/>.
 /// </summary>
