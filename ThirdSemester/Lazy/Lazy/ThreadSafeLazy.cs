@@ -2,6 +2,8 @@
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
+namespace Lazy;
+
 /// <summary>
 /// A lazy evaluation implementation for multi-threaded environments.
 /// Ensures that the value is computed only once, even in concurrent access scenarios.
@@ -12,7 +14,7 @@ public class ThreadSafeLazy<T> : ILazy<T>
     private readonly object locks = new ();
     private Func<T>? supplier;
     private T? value = default;
-    private bool isEvaluated = false;
+    private volatile bool isEvaluated = false;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ThreadSafeLazy{T}"/> class.
@@ -25,19 +27,17 @@ public class ThreadSafeLazy<T> : ILazy<T>
     /// Thrown when the <paramref name="supplier"/> is null.
     /// </exception>
     public ThreadSafeLazy(Func<T> supplier)
-    {
-        this.supplier = supplier ?? throw new ArgumentNullException(nameof(supplier));
-    }
+        => this.supplier = supplier ?? throw new ArgumentNullException(nameof(supplier));
 
     /// <summary>
     /// Returns the computed value. The computation occurs only on the first call.
     /// </summary>
     /// <returns>The computed value, which may be null.</returns>
-    public T Get()
+    public T? Get()
     {
         if (this.isEvaluated)
         {
-            return this.value!;
+            return this.value;
         }
 
         lock (this.locks)

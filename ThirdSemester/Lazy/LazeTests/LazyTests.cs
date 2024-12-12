@@ -2,6 +2,10 @@
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
+using Lazy;
+
+namespace LazeTests;
+
 /// <summary>
 /// Unit tests for SimpleLazy and ThreadSafeLazy implementations.
 /// Tests cover both single-threaded and multi-threaded cases.
@@ -41,10 +45,10 @@ public class LazyTests
         int callCount = 0;
         var lazy = CreateLazy(
             () =>
-        {
-            callCount++;
-            return 42;
-        }, isThreadSafe);
+            {
+                callCount++;
+                return 42;
+            }, isThreadSafe);
 
         lazy.Get();
         lazy.Get();
@@ -60,9 +64,7 @@ public class LazyTests
     [TestCase(false)]
     [TestCase(true)]
     public void Lazy_ThrowsArgumentNullException_WhenSupplierIsNull(bool isThreadSafe)
-    {
-        Assert.Throws<ArgumentNullException>(() => CreateLazy<int>(null, isThreadSafe));
-    }
+    => Assert.Throws<ArgumentNullException>(() => CreateLazy<int>(null, isThreadSafe));
 
     /// <summary>
     /// Single-threaded test for SimpleLazy to ensure that the Get method returns the same value
@@ -71,7 +73,7 @@ public class LazyTests
     [Test]
     public void SimpleLazy_Get_ReturnsSameValue_AfterMultipleCalls()
     {
-        var lazy = new SimpleLazy<int>(() => 42);
+        var lazy = new Lazy.SimpleLazy<int>(() => 42);
 
         var result1 = lazy.Get();
         var result2 = lazy.Get();
@@ -91,7 +93,7 @@ public class LazyTests
     public void ThreadSafeLazy_Get_ComputesValueOnce_Multithreaded()
     {
         int callCount = 0;
-        var lazy = new ThreadSafeLazy<int>(() =>
+        var lazy = new Lazy.ThreadSafeLazy<int>(() =>
         {
             Interlocked.Increment(ref callCount);
             return 42;
@@ -113,7 +115,7 @@ public class LazyTests
     public void ThreadSafeLazy_Get_EnsuresNoRaces_Multithreaded()
     {
         int callCount = 0;
-        var lazy = new ThreadSafeLazy<int>(() =>
+        var lazy = new Lazy.ThreadSafeLazy<int>(() =>
         {
             Thread.Sleep(50);
             Interlocked.Increment(ref callCount);
@@ -131,17 +133,10 @@ public class LazyTests
         Assert.That(callCount, Is.EqualTo(1));
     }
 
-    private static ILazy<T> CreateLazy<T>(Func<T>? supplier, bool isThreadSafe)
+    private static Lazy.ILazy<T> CreateLazy<T>(Func<T>? supplier, bool isThreadSafe)
     {
         ArgumentNullException.ThrowIfNull(supplier);
 
-        if (isThreadSafe)
-        {
-            return new ThreadSafeLazy<T>(supplier);
-        }
-        else
-        {
-            return new SimpleLazy<T>(supplier);
-        }
+        return isThreadSafe ? new ThreadSafeLazy<T>(supplier) : new SimpleLazy<T>(supplier);
     }
 }

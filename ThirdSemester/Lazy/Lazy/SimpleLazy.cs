@@ -2,6 +2,8 @@
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
+namespace Lazy;
+
 /// <summary>
 /// A lazy evaluation implementation for single-threaded environments.
 /// The value is computed only once during the first call to Get.
@@ -24,9 +26,7 @@ public class SimpleLazy<T> : ILazy<T>
     /// Thrown when the <paramref name="supplier"/> is null.
     /// </exception>
     public SimpleLazy(Func<T> supplier)
-    {
-        this.supplier = supplier ?? throw new ArgumentNullException(nameof(supplier));
-    }
+        => this.supplier = supplier ?? throw new ArgumentNullException(nameof(supplier));
 
     /// <summary>
     /// Returns the computed value. The computation occurs only on the first call.

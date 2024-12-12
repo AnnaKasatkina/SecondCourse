@@ -2,11 +2,13 @@
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
+namespace Lazy;
+
 /// <summary>
 /// Interface for lazy evaluation of a value.
 /// </summary>
 /// <typeparam name="T">The type of the computed value.</typeparam>
-public interface ILazy<T>
+public interface ILazy<out T>
 {
     /// <summary>
     /// Returns the computed value. The computation occurs only on the first call.
