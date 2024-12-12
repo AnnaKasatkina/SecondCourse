@@ -2,8 +2,10 @@
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
+namespace MyNUnitTests;
+
 /// <summary>
-/// Пример тестового класса для демонстрации работы системы MyNUnit.
+/// Example test class demonstrating the functionality of the MyNUnit framework.
 /// </summary>
 public class SampleTests
 {
@@ -27,7 +29,7 @@ public class SampleTests
 
     [MyNUnit.Test(Ignore = "Ignored test example")]
     public void TestIgnored()
-    { /* Этот тест игнорируется */
+    {
     }
 
     [MyNUnit.Test]

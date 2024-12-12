@@ -1,22 +1,22 @@
 ﻿// <copyright file="TestAttribute.cs" company="PlaceholderCompany">
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
-namespace MyNUnit
+
+namespace MyNUnit;
+
+/// <summary>
+/// Attribute to mark a method as a test method.
+/// </summary>
+[AttributeUsage(AttributeTargets.Method)]
+public class TestAttribute : Attribute
 {
     /// <summary>
-    /// Атрибут для обозначения метода как тестового.
+    /// Gets or sets the type of exception expected when executing the test.
     /// </summary>
-    [AttributeUsage(AttributeTargets.Method)]
-    public class TestAttribute : Attribute
-    {
-        /// <summary>
-        /// Тип исключения, который ожидается при выполнении теста.
-        /// </summary>
-        public Type? Expected { get; set; }
+    public Type? Expected { get; set; }
 
-        /// <summary>
-        /// Причина, по которой тест должен быть проигнорирован.
-        /// </summary>
-        public string? Ignore { get; set; }
-    }
+    /// <summary>
+    /// Gets or sets the reason why the test should be ignored.
+    /// </summary>
+    public string? Ignore { get; set; }
 }

@@ -2,19 +2,23 @@
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
+namespace MyNUnit;
+
+using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Reflection;
 using MyNUnit;
 
 /// <summary>
-/// Класс, отвечающий за запуск тестов и выполнение методов с атрибутами BeforeClass, AfterClass, Before, After и Test.
+/// The main class responsible for running tests and executing methods marked with BeforeClass, AfterClass, Before, After, and Test attributes.
 /// </summary>
 public class TestRunner
 {
     /// <summary>
-    /// Выполняет тесты из всех сборок, найденных в указанной директории.
+    /// Executes tests from all assemblies found in the specified directory.
     /// </summary>
-    /// <param name="path">Путь к директории, содержащей сборки с тестами.</param>
+    /// <param name="path">Path to the directory containing assemblies with tests.</param>
     public static void RunTests(string path)
     {
         if (path == null)
@@ -37,28 +41,31 @@ public class TestRunner
     }
 
     /// <summary>
-    /// Выполняет тесты внутри одного класса, управляет вызовом методов BeforeClass, AfterClass, Before, After и Test.
+    /// Executes tests within a single class, manages the invocation of BeforeClass, AfterClass, Before, After, and Test methods.
     /// </summary>
-    /// <param name="testClass">Тип тестируемого класса.</param>
+    /// <param name="testClass">The type of the class being tested.</param>
     private static void RunTestClass(Type testClass)
     {
-        var beforeClassMethods = testClass.GetMethods().Where(m => m.GetCustomAttributes(typeof(BeforeClassAttribute), false).Any());
-        var afterClassMethods = testClass.GetMethods().Where(m => m.GetCustomAttributes(typeof(AfterClassAttribute), false).Any());
-        var beforeMethods = testClass.GetMethods().Where(m => m.GetCustomAttributes(typeof(BeforeAttribute), false).Any());
-        var afterMethods = testClass.GetMethods().Where(m => m.GetCustomAttributes(typeof(AfterAttribute), false).Any());
-        var testMethods = testClass.GetMethods().Where(m => m.GetCustomAttributes(typeof(TestAttribute), false).Any());
+        var beforeClassMethods = testClass.GetMethods().Where(m => m.GetCustomAttributes(typeof(BeforeClassAttribute), false).Any()).ToList();
+        var afterClassMethods = testClass.GetMethods().Where(m => m.GetCustomAttributes(typeof(AfterClassAttribute), false).Any()).ToList();
+        var beforeMethods = testClass.GetMethods().Where(m => m.GetCustomAttributes(typeof(BeforeAttribute), false).Any()).ToList();
+        var afterMethods = testClass.GetMethods().Where(m => m.GetCustomAttributes(typeof(AfterAttribute), false).Any()).ToList();
+        var testMethods = testClass.GetMethods().Where(m => m.GetCustomAttributes(typeof(TestAttribute), false).Any()).ToList();
+
+        ValidateStaticMethods(beforeClassMethods, "BeforeClass");
+        ValidateStaticMethods(afterClassMethods, "AfterClass");
 
         ExecuteMethods(beforeClassMethods, null);
 
-        foreach (var testMethod in testMethods)
+        var exceptions = new ConcurrentBag<string>();
+        Parallel.ForEach(testMethods, testMethod =>
         {
-            var testAttribute = testMethod.GetCustomAttribute<TestAttribute>();
-            if (testAttribute.Ignore != null)
-            {
-                Console.WriteLine($"{testMethod.Name} Ignored: {testAttribute.Ignore}");
-                continue;
-            }
-
+        var testAttribute = testMethod.GetCustomAttribute<TestAttribute>();
+        if (testAttribute.Ignore != null)
+        {
+            Console.WriteLine($"{testMethod.Name} Ignored: {testAttribute.Ignore}");
+            return;
+        }
             var instance = Activator.CreateInstance(testClass);
             ExecuteMethods(beforeMethods, instance);
 
@@ -70,7 +77,7 @@ public class TestRunner
 
                 if (testAttribute.Expected != null)
                 {
-                    Console.WriteLine($"{testMethod.Name} Failed: Expected exception of type {testAttribute.Expected}");
+                    exceptions.Add($"{testMethod.Name} Failed: Expected exception of type {testAttribute.Expected}");
                 }
                 else
                 {
@@ -87,26 +94,47 @@ public class TestRunner
                 }
                 else
                 {
-                    Console.WriteLine($"{testMethod.Name} Failed: {ex.InnerException} in {stopwatch.ElapsedMilliseconds}ms");
+                    exceptions.Add($"{testMethod.Name} Failed: {ex.InnerException} in {stopwatch.ElapsedMilliseconds}ms");
                 }
             }
 
             ExecuteMethods(afterMethods, instance);
+        });
+
+        foreach (var exception in exceptions)
+        {
+            Console.WriteLine(exception);
         }
 
         ExecuteMethods(afterClassMethods, null);
     }
 
     /// <summary>
-    /// Выполняет набор методов.
+    /// Executes a set of methods.
     /// </summary>
-    /// <param name="methods">Список методов для выполнения.</param>
-    /// <param name="instance">Экземпляр класса, у которого выполняются методы, или null для статических методов.</param>
+    /// <param name="methods">List of methods to execute.</param>
+    /// <param name="instance">The instance of the class for non-static methods, or null for static methods.</param>
     private static void ExecuteMethods(IEnumerable<MethodInfo>? methods, object? instance)
     {
         foreach (var method in methods ?? Enumerable.Empty<MethodInfo>())
         {
             method.Invoke(instance, null);
+        }
+    }
+
+    /// <summary>
+    /// Validates that all provided methods are static.
+    /// </summary>
+    /// <param name="methods">Methods to validate.</param>
+    /// <param name="attributeName">Name of the attribute for error reporting.</param>
+    private static void ValidateStaticMethods(IEnumerable<MethodInfo> methods, string attributeName)
+    {
+        foreach (var method in methods)
+        {
+            if (!method.IsStatic)
+            {
+                throw new InvalidOperationException($"Method {method.Name} marked with {attributeName} must be static.");
+            }
         }
     }
 }
