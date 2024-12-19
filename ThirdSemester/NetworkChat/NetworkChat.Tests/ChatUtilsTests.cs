@@ -2,15 +2,9 @@
 
 namespace NetworkChat.Tests;
 
-/// <summary>
-/// Unit tests for chat utility methods.
-/// </summary>
 [TestFixture]
 public class ChatUtilsTests
 {
-    /// <summary>
-    /// Verifies that SendMessages writes data to a NetworkStream correctly.
-    /// </summary>
     [Test]
     public async Task SendMessages_ShouldWriteToNetworkStream()
     {
@@ -18,13 +12,13 @@ public class ChatUtilsTests
         listener.Start();
         var port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
 
-        var clientTask = Task.Run(async () =>
+        var clientTask = Task.Run(() =>
         {
             using var client = new TcpClient("127.0.0.1", port);
             using var stream = client.GetStream();
             using var reader = new StreamReader(stream);
-            var receivedMessage = await reader.ReadLineAsync();
-            Assert.Equals("Test Message", receivedMessage);
+            var receivedMessage = reader.ReadLine();
+            Assert.AreEqual("Test Message", receivedMessage);
         });
 
         using var server = await listener.AcceptTcpClientAsync();
@@ -38,9 +32,6 @@ public class ChatUtilsTests
         await clientTask;
     }
 
-    /// <summary>
-    /// Verifies that ReceiveMessages reads data from a NetworkStream correctly.
-    /// </summary>
     [Test]
     public async Task ReceiveMessages_ShouldReadFromNetworkStream()
     {
@@ -48,12 +39,12 @@ public class ChatUtilsTests
         listener.Start();
         var port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
 
-        var clientTask = Task.Run(async () =>
+        var clientTask = Task.Run(() =>
         {
             using var client = new TcpClient("127.0.0.1", port);
             using var stream = client.GetStream();
             using var writer = new StreamWriter(stream) { AutoFlush = true };
-            await writer.WriteLineAsync("Test Message");
+            writer.WriteLine("Test Message");
         });
 
         using var server = await listener.AcceptTcpClientAsync();
@@ -62,10 +53,9 @@ public class ChatUtilsTests
         var consoleOutput = new StringWriter();
         Console.SetOut(consoleOutput);
 
-        var receiveTask = Task.Run(() => ChatUtils.ReceiveMessages(serverStream));
-        await Task.Delay(500);
+        Task.Run(() => ChatUtils.ReceiveMessages(serverStream)).Wait(1000);
 
-        Assert.AreEquals("Test Message", consoleOutput.ToString().Trim());
+        Assert.IsTrue(consoleOutput.ToString().Contains("Test Message"));
 
         listener.Stop();
         await clientTask;

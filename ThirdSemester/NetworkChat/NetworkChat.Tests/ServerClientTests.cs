@@ -1,21 +1,14 @@
-﻿using System;
-using System.Net.Sockets;
-using System.Threading.Tasks;
+﻿using System.Net.Sockets;
+
 namespace NetworkChat.Tests
 {
-    /// <summary>
-    /// Unit tests for server and client functionality.
-    /// </summary>
     [TestFixture]
     public class ServerClientTests
     {
-        /// <summary>
-        /// Verifies that the client successfully connects to the server.
-        /// </summary>
         [Test]
-        public async Task Client_Connect_ShouldConnectToServer()
+        public async Task Server_Start_ShouldAcceptClientConnection()
         {
-            var port = 5001;
+            var port = 5000;
             var serverTask = Task.Run(() => Server.Start(port));
 
             await Task.Delay(500);
@@ -25,40 +18,36 @@ namespace NetworkChat.Tests
             serverTask.Dispose();
         }
 
-        /// <summary>
-        /// Verifies message exchange between client and server.
-        /// </summary>
+        [Test]
+        public async Task Client_Connect_ShouldConnectToServer()
+        {
+            var port = 5001;
+            var serverTask = Task.Run(() => Server.Start(port));
+
+            await Task.Delay(500);
+            Assert.DoesNotThrow(() => Client.Connect("127.0.0.1", port));
+
+            serverTask.Dispose();
+        }
+
         [Test]
         public async Task ClientAndServer_ShouldExchangeMessages()
         {
             var port = 5002;
-            var listener = new TcpListener(System.Net.IPAddress.Loopback, port);
-            listener.Start();
-
-            var serverTask = Task.Run(async () =>
-            {
-                using var server = await listener.AcceptTcpClientAsync();
-                using var stream = server.GetStream();
-                using var reader = new StreamReader(stream);
-                using var writer = new StreamWriter(stream) { AutoFlush = true };
-
-                var message = await reader.ReadLineAsync();
-                await writer.WriteLineAsync(message);
-            });
-
+            var serverTask = Task.Run(() => Server.Start(port));
             await Task.Delay(500);
+
             using var client = new TcpClient("127.0.0.1", port);
-            using var stream = client.GetStream();
-            using var writer = new StreamWriter(stream) { AutoFlush = true };
-            using var reader = new StreamReader(stream);
+            using var clientStream = client.GetStream();
+            using var writer = new StreamWriter(clientStream) { AutoFlush = true };
+            using var reader = new StreamReader(clientStream);
 
             writer.WriteLine("Hello Server");
-            var response = await reader.ReadLineAsync();
+            var response = reader.ReadLine();
 
-            Assert.Equals("Hello Server", response);
+            Assert.AreEqual("Hello Server", response);
 
-            listener.Stop();
-            await serverTask;
+            serverTask.Dispose();
         }
     }
 }
