@@ -28,7 +28,6 @@ public class MyThreadPool
             throw new ArgumentOutOfRangeException(nameof(numThreads), "Number of threads must be positive.");
         }
 
-        Instance = this;
         this.numThreads = numThreads;
         this.threads = new Thread[this.numThreads];
 
@@ -38,15 +37,6 @@ public class MyThreadPool
             this.threads[i].Start();
         }
     }
-
-    /// <summary>
-    /// Gets the singleton instance of the <see cref="MyThreadPool"/> class.
-    /// </summary>
-    /// <remarks>
-    /// This property ensures that there is only one instance of the thread pool.
-    /// Trying to create another instance will result in an exception.
-    /// </remarks>
-    public static MyThreadPool Instance { get; private set; } = null!;
 
     /// <summary>
     /// Submits a task to the thread pool for execution.
@@ -61,7 +51,7 @@ public class MyThreadPool
             throw new InvalidOperationException("Thread pool is shutting down. Cannot accept new tasks.");
         }
 
-        var myTask = new MyTask<TResult>(taskFunc);
+        var myTask = new MyTask<TResult>(taskFunc, this);
         this.taskQueue.Add(() => myTask.Execute());
         return myTask;
     }
@@ -73,10 +63,6 @@ public class MyThreadPool
     public void Shutdown()
     {
         this.taskQueue.CompleteAdding();
-        foreach (var thread in this.threads)
-        {
-            thread.Join();
-        }
 
         while (this.taskQueue.TryTake(out var task))
         {
@@ -88,6 +74,11 @@ public class MyThreadPool
             {
             }
         }
+
+        foreach (var thread in this.threads)
+        {
+            thread.Join();
+        }
     }
 
     /// <summary>
@@ -96,10 +87,12 @@ public class MyThreadPool
     /// <param name="task">The task to be added to the queue.</param>
     public void EnqueueTask(Action task)
     {
-        if (!this.taskQueue.IsAddingCompleted)
+        if (this.taskQueue.IsAddingCompleted)
         {
-            this.taskQueue.Add(task);
+            throw new InvalidOperationException("Thread pool is shutting down. Cannot accept new tasks.");
         }
+
+        this.taskQueue.Add(task);
     }
 
     /// <summary>
@@ -107,25 +100,15 @@ public class MyThreadPool
     /// </summary>
     private void WorkerLoop()
     {
-        while (!this.cancellationTokenSource.Token.IsCancellationRequested)
+        try
         {
-            try
+            foreach (var task in this.taskQueue.GetConsumingEnumerable(this.cancellationTokenSource.Token))
             {
-                Action task = this.taskQueue.Take(this.cancellationTokenSource.Token);
                 task();
-            }
-            catch (OperationCanceledException)
-            {
-                break;
             }
         }
-
-        while (!this.taskQueue.IsCompleted)
+        catch (OperationCanceledException)
         {
-            if (this.taskQueue.TryTake(out var task))
-            {
-                task();
-            }
         }
     }
 }

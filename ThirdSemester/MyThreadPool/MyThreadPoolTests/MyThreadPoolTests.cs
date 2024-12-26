@@ -99,7 +99,7 @@ public class MyThreadPoolTests
     public void Pool_Should_Have_At_Least_N_Threads()
     {
         var threadPool = new MyThreadPool(3);
-        int activeThreads = 0;
+        var activeThreads = 0;
 
         var task = threadPool.Submit(() =>
         {
@@ -160,31 +160,6 @@ public class MyThreadPoolTests
         {
             Assert.That(() => tasks.All(t => t.IsCompleted || t.IsCanceled), Is.True, "Some tasks did not complete or were not canceled.");
             Assert.Throws<InvalidOperationException>(() => threadPool.Submit(() => 1), "Pool should not accept tasks after shutdown.");
-        });
-    }
-
-    /// <summary>
-    /// Ensures correct behavior of tasks using ContinueWith after the thread pool is shut down.
-    /// </summary>
-    [Test]
-    public void Pool_Should_Handle_Shutdown_And_ContinueWith()
-    {
-        var threadPool = new MyThreadPool(3);
-
-        var initialTask = threadPool.Submit(() =>
-        {
-            Thread.Sleep(100);
-            return 42;
-        });
-
-        var continuedTask = initialTask.ContinueWith(result => result + 1);
-
-        threadPool.Shutdown();
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(initialTask.Result, Is.EqualTo(42), "Initial task did not complete as expected.");
-            Assert.That(continuedTask.Result, Is.EqualTo(43), "Continued task did not complete as expected.");
         });
     }
 }

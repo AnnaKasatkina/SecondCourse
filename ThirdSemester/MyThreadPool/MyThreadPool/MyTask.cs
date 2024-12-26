@@ -10,6 +10,7 @@ namespace MyThreadPool;
 /// <typeparam name="TResult">The type of the result produced by the task.</typeparam>
 internal class MyTask<TResult> : IMyTask<TResult>
 {
+    private readonly MyThreadPool threadPool;
     private Func<TResult>? taskFunc;
     private TResult? result;
     private Exception? exception;
@@ -21,7 +22,12 @@ internal class MyTask<TResult> : IMyTask<TResult>
     /// Initializes a new instance of the <see cref="MyTask{TResult}"/> class.
     /// </summary>
     /// <param name="taskFunc">The function representing the task to be executed.</param>
-    public MyTask(Func<TResult> taskFunc) => this.taskFunc = taskFunc;
+    /// <param name="threadPool">The thread pool that will execute this task.</param>
+    public MyTask(Func<TResult> taskFunc, MyThreadPool threadPool)
+    {
+        this.taskFunc = taskFunc;
+        this.threadPool = threadPool;
+    }
 
     /// <summary>
     /// Gets a value indicating whether the task is completed.
@@ -79,7 +85,7 @@ internal class MyTask<TResult> : IMyTask<TResult>
             {
                 foreach (var continuation in this.continuations)
                 {
-                    MyThreadPool.Instance.EnqueueTask(continuation);
+                    this.threadPool.EnqueueTask(continuation);
                 }
             }
         }
@@ -93,14 +99,14 @@ internal class MyTask<TResult> : IMyTask<TResult>
     /// <returns>A new task representing the continuation.</returns>
     public IMyTask<TNewResult> ContinueWith<TNewResult>(Func<TResult, TNewResult> continuation)
     {
-        var newTask = new MyTask<TNewResult>(() => continuation(this.Result));
+        var newTask = new MyTask<TNewResult>(() => continuation(this.Result), this.threadPool);
         Action runContinuation = () => newTask.Execute();
 
         lock (this.continuations)
         {
             if (this.isCompleted)
             {
-                MyThreadPool.Instance.EnqueueTask(runContinuation);
+                this.threadPool.EnqueueTask(runContinuation);
             }
             else
             {
