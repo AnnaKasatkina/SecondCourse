@@ -1,5 +1,5 @@
-﻿// <copyright file="FTPServer.cs" company="PlaceholderCompany">
-// Copyright (c) PlaceholderCompany. All rights reserved.
+﻿// <copyright file="FtpServer.cs" company="Anna Kasatkina">
+// Copyright (c) Anna Kasatkina. All rights reserved.
 // </copyright>
 
 using System.Net;
@@ -10,16 +10,18 @@ using System.Text;
 /// FTP server that processes List and Get requests to retrieve directory listings
 /// and download files. Supports multithreading to handle multiple clients simultaneously.
 /// </summary>
-public class FTPServer
+public class FtpServer
 {
+    private readonly CancellationTokenSource cancellationTokenSource = new();
+    private readonly List<Task> clientTasks = new();
     private readonly int port;
     private TcpListener listener;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="FTPServer"/> class with the specified port.
+    /// Initializes a new instance of the <see cref="FtpServer"/> class with the specified port.
     /// </summary>
     /// <param name="port">The port on which the server will listen for incoming connections.</param>
-    public FTPServer(int port)
+    public FtpServer(int port)
     {
         this.port = port;
         this.listener = new TcpListener(IPAddress.Any, this.port);
@@ -30,7 +32,6 @@ public class FTPServer
     /// </summary>
     public void Start()
     {
-        this.listener = new TcpListener(IPAddress.Any, this.port);
         this.listener.Start();
         Console.WriteLine($"Server started on port {this.port}");
 
@@ -39,48 +40,83 @@ public class FTPServer
 
     /// <summary>
     /// Stops the server, ceasing acceptance of new connections.
+    /// Waits for all client tasks to complete.
     /// </summary>
-    public void Stop()
+    /// <returns>A task that represents the asynchronous stop operation.</returns>
+    public async Task StopAsync()
     {
+        this.cancellationTokenSource.Cancel();
         this.listener.Stop();
+
+        Task[] tasks;
+        lock (this.clientTasks)
+        {
+            tasks = this.clientTasks.ToArray();
+        }
+
+        await Task.WhenAll(tasks);
+        Console.WriteLine("Server stopped.");
     }
 
     private async Task AcceptClientsAsync()
     {
-        while (true)
+        while (!this.cancellationTokenSource.Token.IsCancellationRequested)
         {
-            var client = await this.listener.AcceptTcpClientAsync();
-            _ = Task.Run(() => this.HandleClientAsync(client));
+            try
+            {
+                var client = await this.listener.AcceptTcpClientAsync();
+                var task = Task.Run(() => this.HandleClientAsync(client), this.cancellationTokenSource.Token);
+                lock (this.clientTasks)
+                {
+                    this.clientTasks.Add(task);
+                }
+
+                await task;
+                lock (this.clientTasks)
+                {
+                    this.clientTasks.Remove(task);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error accepting client: {ex.Message}");
+            }
         }
     }
 
     private async Task HandleClientAsync(TcpClient client)
     {
-        using var networkStream = client.GetStream();
-        using var reader = new StreamReader(networkStream, Encoding.UTF8);
-        using var writer = new StreamWriter(networkStream, Encoding.UTF8) { AutoFlush = true };
-
-        string request = await reader.ReadLineAsync();
-        if (string.IsNullOrWhiteSpace(request))
+        using (client)
         {
-            return;
-        }
+            using var networkStream = client.GetStream();
+            using var reader = new StreamReader(networkStream, Encoding.UTF8);
+            using var writer = new StreamWriter(networkStream, Encoding.UTF8) { AutoFlush = true };
 
-        var parts = request.Split(' ');
-        int command = int.Parse(parts[0]);
-        string path = parts[1];
+            string? request = await reader.ReadLineAsync();
+            if (string.IsNullOrEmpty(request))
+            {
+                return;
+            }
 
-        switch (command)
-        {
-            case 1:
-                await this.HandleListCommandAsync(path, writer);
-                break;
-            case 2:
-                await this.HandleGetCommandAsync(path, writer, networkStream);
-                break;
-            default:
-                Console.WriteLine("Invalid command received");
-                break;
+            var parts = request.Split(' ');
+            if (parts.Length < 2 || !int.TryParse(parts[0], out int command))
+            {
+                return;
+            }
+
+            string path = parts[1];
+            switch (command)
+            {
+                case 1:
+                    await this.HandleListCommandAsync(path, writer);
+                    break;
+                case 2:
+                    await this.HandleGetCommandAsync(path, writer, networkStream);
+                    break;
+                default:
+                    Console.WriteLine("Invalid command received.");
+                    break;
+            }
         }
     }
 
