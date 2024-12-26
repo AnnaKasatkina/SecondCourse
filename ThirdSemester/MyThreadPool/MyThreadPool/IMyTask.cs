@@ -1,5 +1,5 @@
-﻿// <copyright file="IMyTask.cs" company="PlaceholderCompany">
-// Copyright (c) PlaceholderCompany. All rights reserved.
+﻿// <copyright file="IMyTask.cs" company="Anna Kasatkina">
+// Copyright (c) Anna Kasatkina. All rights reserved.
 // </copyright>
 
 namespace MyThreadPool;
@@ -16,22 +16,20 @@ public interface IMyTask<TResult>
     bool IsCompleted { get; }
 
     /// <summary>
-    /// Gets the result of the task. If the task has not yet completed,
-    /// this property blocks the calling thread until the result is available.
+    /// Gets the result of the task. Blocks if the task is not completed yet.
     /// </summary>
     /// <exception cref="AggregateException">
     /// Thrown if the task encountered an exception during execution.
-    /// The exception is wrapped in an <see cref="AggregateException"/>.
     /// </exception>
     TResult Result { get; }
 
     /// <summary>
-    /// Continues the execution of the task with a new task that will process the result of the current task.
+    /// Continues the execution of the task with a new task.
     /// </summary>
-    /// <typeparam name="TNewResult">The type of the result returned by the continuation task.</typeparam>
+    /// <typeparam name="TNewResult">The result type of the continuation task.</typeparam>
     /// <param name="continuation">
-    /// A function that processes the result of the current task and returns a new result.
+    /// Function processing the current task's result and returning a new result.
     /// </param>
-    /// <returns>A new task representing the continuation.</returns>
+    /// <returns>A new task for the continuation.</returns>
     IMyTask<TNewResult> ContinueWith<TNewResult>(Func<TResult, TNewResult> continuation);
 }

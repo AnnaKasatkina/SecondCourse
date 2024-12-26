@@ -1,5 +1,5 @@
-﻿// <copyright file="MyTask.cs" company="PlaceholderCompany">
-// Copyright (c) PlaceholderCompany. All rights reserved.
+﻿// <copyright file="MyTask.cs" company="Anna Kasatkina">
+// Copyright (c) Anna Kasatkina. All rights reserved.
 // </copyright>
 
 namespace MyThreadPool;
@@ -8,9 +8,9 @@ namespace MyThreadPool;
 /// Represents a task that can be executed by the thread pool.
 /// </summary>
 /// <typeparam name="TResult">The type of the result produced by the task.</typeparam>
-public class MyTask<TResult> : IMyTask<TResult>
+internal class MyTask<TResult> : IMyTask<TResult>
 {
-    private Func<TResult> taskFunc;
+    private Func<TResult>? taskFunc;
     private TResult? result;
     private Exception? exception;
     private bool isCompleted;
@@ -21,10 +21,7 @@ public class MyTask<TResult> : IMyTask<TResult>
     /// Initializes a new instance of the <see cref="MyTask{TResult}"/> class.
     /// </summary>
     /// <param name="taskFunc">The function representing the task to be executed.</param>
-    public MyTask(Func<TResult> taskFunc)
-    {
-        this.taskFunc = taskFunc;
-    }
+    public MyTask(Func<TResult> taskFunc) => this.taskFunc = taskFunc;
 
     /// <summary>
     /// Gets a value indicating whether the task is completed.
@@ -61,6 +58,11 @@ public class MyTask<TResult> : IMyTask<TResult>
     {
         try
         {
+            if (this.taskFunc == null)
+            {
+                throw new InvalidOperationException("Task function is null.");
+            }
+
             this.result = this.taskFunc();
         }
         catch (Exception ex)
@@ -71,11 +73,13 @@ public class MyTask<TResult> : IMyTask<TResult>
         {
             this.isCompleted = true;
             this.completionEvent.Set();
+            this.taskFunc = null;
+
             lock (this.continuations)
             {
                 foreach (var continuation in this.continuations)
                 {
-                    continuation();
+                    MyThreadPool.Instance.EnqueueTask(continuation);
                 }
             }
         }
@@ -96,7 +100,7 @@ public class MyTask<TResult> : IMyTask<TResult>
         {
             if (this.isCompleted)
             {
-                runContinuation();
+                MyThreadPool.Instance.EnqueueTask(runContinuation);
             }
             else
             {
