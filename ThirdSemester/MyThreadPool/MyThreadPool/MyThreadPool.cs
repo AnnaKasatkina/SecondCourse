@@ -87,12 +87,14 @@ public class MyThreadPool
     /// <param name="task">The task to be added to the queue.</param>
     public void EnqueueTask(Action task)
     {
-        if (this.taskQueue.IsAddingCompleted)
+        try
         {
-            throw new InvalidOperationException("Thread pool is shutting down. Cannot accept new tasks.");
+            this.taskQueue.Add(task);
         }
-
-        this.taskQueue.Add(task);
+        catch (InvalidOperationException)
+        {
+            throw new InvalidOperationException("Thread pool is shutting down.");
+        }
     }
 
     /// <summary>
