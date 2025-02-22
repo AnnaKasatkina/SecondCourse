@@ -1,4 +1,4 @@
-﻿// <copyright file="FtpClient.cs" company="Anna Kasatkina">
+﻿// <copyright file="FTPClient.cs" company="Anna Kasatkina">
 // Copyright (c) Anna Kasatkina. All rights reserved.
 // </copyright>
 

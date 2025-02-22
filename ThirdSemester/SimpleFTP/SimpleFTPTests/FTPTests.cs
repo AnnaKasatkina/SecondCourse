@@ -1,4 +1,4 @@
-// <copyright file="FtpTests.cs" company="Anna Kasatkina">
+// <copyright file="FTPTests.cs" company="Anna Kasatkina">
 // Copyright (c) Anna Kasatkina. All rights reserved.
 // </copyright>
 
