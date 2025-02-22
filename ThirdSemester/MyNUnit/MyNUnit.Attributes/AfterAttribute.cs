@@ -2,7 +2,7 @@
 // Copyright (c) PlaceholderCompany. All rights reserved.
 // </copyright>
 
-namespace MyNUnit;
+namespace MyNUnit.Attributes;
 
 /// <summary>
 /// Attribute to mark a method to run after each test in a class.
