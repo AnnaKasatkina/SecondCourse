@@ -85,7 +85,14 @@ internal class MyTask<TResult> : IMyTask<TResult>
             {
                 foreach (var continuation in this.continuations)
                 {
-                    this.threadPool.EnqueueTask(continuation);
+                    try
+                    {
+                        this.threadPool.EnqueueTask(continuation);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        continuation();
+                    }
                 }
             }
         }

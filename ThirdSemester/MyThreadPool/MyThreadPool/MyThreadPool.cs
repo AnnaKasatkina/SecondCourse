@@ -46,11 +46,6 @@ public class MyThreadPool
     /// <returns>A task object representing the submitted task.</returns>
     public IMyTask<TResult> Submit<TResult>(Func<TResult> taskFunc)
     {
-        if (this.taskQueue.IsAddingCompleted)
-        {
-            throw new InvalidOperationException("Thread pool is shutting down. Cannot accept new tasks.");
-        }
-
         var myTask = new MyTask<TResult>(taskFunc, this);
         this.taskQueue.Add(() => myTask.Execute());
         return myTask;
@@ -63,17 +58,6 @@ public class MyThreadPool
     public void Shutdown()
     {
         this.taskQueue.CompleteAdding();
-
-        while (this.taskQueue.TryTake(out var task))
-        {
-            try
-            {
-                task();
-            }
-            catch
-            {
-            }
-        }
 
         foreach (var thread in this.threads)
         {
